@@ -1,0 +1,3 @@
+git_info_git_executable: git
+git_info_repository_path: "{{ playbook_dir }}"
+git_info_version_tag_pattern: "^((v|ver|version)-?)?\\d+(\\.\\d+)*(\\-\\w+)*$"

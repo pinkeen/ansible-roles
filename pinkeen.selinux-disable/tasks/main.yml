@@ -1,0 +1,15 @@
+- name: Check if selinux is installed
+  stat:
+    path: /etc/selinux/config
+  register: selinux_config_file
+
+- name: Disable selinux if installed
+  when: selinux_config_file.stat.exists is defined and selinux_config_file.stat.exists
+  block:
+    - name: Install libselinux
+      yum: name=libselinux-python state=present
+
+    - name: Make selinux permissive
+      selinux:
+        policy: targeted
+        state: permissive

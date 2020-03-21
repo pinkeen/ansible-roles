@@ -1,0 +1,13 @@
+dependencies: []
+galaxy_info:
+  author: Filip Sobalski
+  company: creativestyle
+  description: Disable selinux
+  license: MIT
+  min_ansible_version: 2.0
+  galaxy_tags:
+    - selinux
+  platforms:
+    - name: EL
+      versions:
+        - 7

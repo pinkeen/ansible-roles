@@ -1,0 +1,3 @@
+- hosts: all
+  roles:
+    - pinkeen.git-version-info

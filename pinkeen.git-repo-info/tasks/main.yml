@@ -1,0 +1,118 @@
+- name: Check git dir
+  command: "{{ git_info_git_executable }} rev-parse --git-dir"
+  args:
+    chdir: "{{ git_info_repository_path }}"
+  changed_when: no
+  failed_when: not git_info_repo_git_dir_check.rc in [0, 128]
+  register: git_info_repo_git_dir_check
+
+- name: Fail with debugging message
+  when: git_info_repo_git_dir_check.rc != 0
+  fail:
+    msg: |
+      FATAL: Could not locate git repository in:
+      {{ git_info_repository_path }}'
+      
+      Command:
+      [{{ git_info_repo_git_dir_check.rc }}] {{ git_info_repo_git_dir_check.cmd | join(' ') }} 
+      {{ git_info_repo_git_dir_check.stderr }}
+
+- name: Set basic facts
+  set_fact:
+    git_info_git_cmd: "{{ git_info_git_executable }} --git-dir '{{ git_info_repository_path }}/{{ git_info_repo_git_dir_check.stdout | trim }}'"
+
+- name: Get local config (raw output)
+  command: >-
+    {{ git_info_git_cmd }} 
+      config --list --local
+  changed_when: no
+  register: git_info_local_config_cmd
+
+- name: Store local config (parsed)
+  set_fact:
+    git_info_local_config: "{{ git_info_local_config_cmd.stdout | lookup('ini') }}"
+
+- debug: var=git_info_local_config
+- fail: msg=break
+
+- name: Get commit
+  command: >-
+    {{ git_info_git_cmd }} 
+      log -n1 --pretty='{{ git_info_pretty_format }}'
+  vars:
+    git_info_pretty_format: >- 
+      format:{
+        "hash": "%H", 
+        "hash_short": "%h", 
+        "timestamp": %at, 
+        "author": "%an <%ae>", 
+        "date": "%aI", 
+        "subject_slug": "%f"
+      }
+  changed_when: no
+  register: git_info_version_commit
+
+- name: Get commit subject
+  command: >-
+    {{ git_info_git_cmd }} 
+      log -n1 --pretty='%s'
+  changed_when: no
+  register: git_info_version_commit_subject
+
+- name: Get revision info
+  command: >-
+    {{ git_info_git_cmd }}
+      log -n1 --pretty='%h'
+  changed_when: no
+  register: git_info_version_rev_info
+
+- name: Get tags
+  command: >-
+    {{ git_info_git_cmd }}  tag --contains HEAD
+  changed_when: no
+  register: git_info_version_tags
+
+- name: Get branch
+  command: >-
+    {{ git_info_git_cmd }} 
+      rev-parse --abbrev-ref HEAD
+  changed_when: no
+  register: git_info_version_branch
+
+- name: Get origin url
+  command: >-
+    {{ git_info_git_cmd }} 
+      config --get remote.origin.url
+  failed_when: no
+  changed_when: no
+  register: git_info_version_origin
+
+- name: Store git info
+  set_fact:
+    git_repo_info:
+      commit: "{{ git_info_version_commit.stdout | trim | from_json | combine(git_info_commit_add) }}"
+      tag: "{{ git_info_tags | first | default(None) }}"
+      tags: "{{ git_info_tags }}"
+      version_tag: "{{ git_info_version_tags | sort | last | default(None) }}"
+      version_tags: "{{ git_info_version_tags }}"
+      branch: "{{ git_info_version_branch.stdout | trim }}"
+      origin: "{{ git_info_version_origin.stdout | trim | default(None) }}"
+      local_dir: "{{ git_info_repo_work_tree }}"
+  vars:
+    git_info_tags: "{{ git_info_version_tags.stdout_lines | sort }}"
+    git_info_version_tags: "{{ git_info_version_tags.stdout_lines | select('match', git_info_version_tag_pattern)|sort }}"
+    git_info_commit_add:
+      subject: "{{ git_info_version_commit_subject.stdout | trim }}"
+
+- name: Set git version
+  set_fact:
+    git_info_revision: "git_repo_info.commit.hash"
+    git_info_version: >-
+      {{ git_repo_info.version_tag
+          if git_repo_info.version_tag
+            else
+              git_repo_info.branch ~ '#' ~ git_repo_info.commit.hash_short
+      }}
+    git_info_timestamp: "{{ git_repo_info.commit.timestamp }}"
+    git_info_date: "{{ git_repo_info.commit.date }}"
+

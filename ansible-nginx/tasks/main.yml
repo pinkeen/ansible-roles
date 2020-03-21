@@ -1,0 +1,74 @@
+- name: Install nginx repository
+  copy:
+    src: nginx.repo
+    dest: /etc/yum.repos.d/nginx.repo
+    mode: 0644
+
+- name: Install nginx
+  yum:
+    name: nginx
+    state: installed
+
+- name: Ensure nginx group is present
+  group:
+    name: nginx
+    state: present
+
+- name: Ensure nginx user is present
+  user:
+    name: nginx
+    shell: /sbin/nologin
+    group: nginx
+    home: /var/cache/nginx
+    createhome: no
+    state: present
+
+- name: Install nginx confg
+  template:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+  notify: Reload nginx
+
+- name: Install certs
+  copy:
+    mode: 0640
+    src: "{{ item.ssl_cert }}"
+    dest: "{{ nginx_cert_directory }}/{{ item.ssl_cert | basename }}"
+  when: item.ssl_cert|default(False)
+  with_items: "{{ nginx_vhosts }}"
+  notify: Reload nginx
+
+- name: Install private keys
+  copy:
+    mode: 0640
+    src: "{{ item.ssl_key }}"
+    dest: "{{ nginx_cert_directory }}/{{ item.ssl_key | basename }}"
+  when: item.ssl_key|default(False)
+  with_items: "{{ nginx_vhosts }}"
+  notify: Reload nginx
+
+- name: Install vhost configs
+  template:
+    src: "{{ item.config_template }}"
+    dest: "/etc/nginx/conf.d/{{ item.name }}.conf"
+    mode: 0644
+  with_items: "{{ nginx_vhosts }}"
+  notify: Reload nginx
+
+- name: List installed vhost configs
+  shell: ls -1 /etc/nginx/conf.d/ | grep '\.conf$' | sed 's/.....$//'
+  register: nginx_vhost_files
+  when: nginx_remove_extra_vhosts
+
+- name: Ensure only configured vhosts are installed
+  file:
+    name: "/etc/nginx/conf.d/{{ item }}.conf"
+    state: absent
+  with_items: "{{ nginx_vhost_files.stdout_lines|default([]) }}"
+  when: (item not in nginx_vhosts|map(attribute='name')) and nginx_remove_extra_vhosts
+
+- name: Ensure that nginx is started & enabled
+  service:
+    name: nginx
+    state: started
+    enabled: yes
