@@ -12,7 +12,7 @@
     docker_builder_image_id: "{{ docker_builder_image_build_path | ternary(docker_builder_project_name, 'alpine:latest') }}"
     docker_builder_project_name: "{{ docker_builder_project_name }}"
     docker_builder_container_name: "{{ docker_builder_container_name }}"
-    docker_builder_container_ansible_group: "{{ docker_builder_container_ansible_group }}"
+    docker_builder_container_ansible_groups: "{{ docker_builder_container_ansible_groups }}"
   delegate_to: "{{ target_host }}"
   delegate_facts: true
   loop: "{{ (['localhost', inventory_hostname] + groups[docker_builder_container_ansible_group]) | unique }}"
