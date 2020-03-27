@@ -1,11 +1,12 @@
-from pinkeen.ansible.filters import filterclass
+from pinkeen.ansible.filters import AbstractFilterModule
 
 
-@filterclass
-class DockerFilters(object):
-  
+class DockerFilterModule(AbstractFilterModule):
+  FILTER_NAME_PREFIX = 'docker_'
+  FILTER_FUNC_PREFIX = 'do_'
+
   @staticmethod
-  def do_docker_ports_proto_split(cfg={}, default_proto='tcp'):
+  def do_ports_proto_split(cfg={}, default_proto='tcp'):
       protos = {}
 
       for k, v in cfg.items():
@@ -24,7 +25,7 @@ class DockerFilters(object):
 
 
   @staticmethod
-  def do_docker_env_to_dict(env=[]):
+  def do_env_to_dict(env=[]):
       return { 
         name.strip(): value[0].strip() if len(value) else None
           for name, *value in 

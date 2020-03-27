@@ -3,44 +3,51 @@ import types
 
 from pinkeen.utils import pprint
 
-def filterclass(strip='do_', prefix=''):
-    FUNC_ATTR = '__filter_name'
+class AbstractFilterModule(object):
+    FILTER_NAME_PREFIX = ''
+    FILTER_FUNC_PREFIX = ''
+    FILTER_FUNC_STRIP_PREFIX = True
+    FILTER_BASE_MAP = {}
+    FILTER_BASE_CLASSES = []
 
-    def decorate(cls):
+    def create_filter_name(self, func_name):
+        if self.FILTER_FUNC_STRIP_PREFIX and func_name.startswith(self.FILTER_FUNC_PREFIX):
+            filter_name = func_name[len(self.FILTER_FUNC_PREFIX):]
+        else:
+            filter_name = func_name
+        
+        return self.FILTER_NAME_PREFIX + filter_name
 
-        def get_filters():
-            functions = inspect.getmembers(cls,
-                lambda member: 
-                    inspect.isfunction(member) 
-                    or inspect.ismethod(member)
-            )
+    def create_base_filter_map(self):
+        filters = self.FILTER_BASE_MAP
+        
+        for cls in self.FILTER_BASE_CLASSES:
+            obj = cls()
+            if hasattr(obj, 'filters'):
+                filters.update(getattr(obj, 'filters')())
 
-            for n, f in functions:
-                pprint(f.__dict__)
+        return filters
 
-            filters = {
-                function.__dict__[FUNC_ATTR] if FUNC_ATTR in function.__dict__ else name: function 
-                    for name, function in functions
-            }
 
-            filters = {
-                prefix + name[len(strip):]: function 
-                    for name, function in filters.items()
-                        if name.startswith(strip)
-            }
+    def create_own_filter_map(self):
+        funcs = inspect.getmembers(self.__class__,
+            lambda member: 
+                inspect.isfunction(member) 
+                or inspect.ismethod(member)
+        )
 
-            return filters
-            
-        filters = get_filters()
+        return {
+            self.create_filter_name(func_name): func
+                for func_name, func in funcs
+                    if func_name.startswith(self.FILTER_FUNC_PREFIX)
+        }
 
-        for name, function in filters.items():
-            function.__dict__[FUNC_ATTR] = name
 
-        cls.filters = lambda self: filters
-
-        return cls
-
-    return decorate
-
+    def filters(self):
+        filters = self.create_base_filter_map()
+        filters.update(self.create_own_filter_map())
+        
+        return filters
+    
     
     

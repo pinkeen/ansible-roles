@@ -3,15 +3,16 @@ __metaclass__ = type
 
 import os, sys; sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../lib')))
 
-from pinkeen.utils import pprint
-from pinkeen.ansible.filters import filterclass
-from pinkeen.ansible.filters.obj import ObjFilters
-from pinkeen.ansible.filters.lst import LstFilters
+from pinkeen.ansible.filters import AbstractFilterModule
+from pinkeen.ansible.filters.basic import DictFilterModule, ListFilterModule
+from pinkeen.ansible.filters.docker import DockerFilterModule
+from pinkeen.ansible.filters.ini import IniModule
 
-@filterclass()
-class FilterModule(ObjFilters, LstFilters):
-    pass
-
-print('--- COMBINED ---')
-m = FilterModule()
-pprint(m.filters())
+class FilterModule(AbstractFilterModule):
+    FILTER_FUNC_PREFIX = 'do_'
+    FILTER_BASE_CLASSES = [
+        DictFilterModule, 
+        ListFilterModule, 
+        DockerFilterModule,
+        IniModule
+    ]

@@ -89,13 +89,13 @@
         host_mapping:   "{{ docker_info.Mounts | default([]) | items2dict(key_name='Destination', value_name='Source') }}"
       ports:        
         configuration:  "{{ docker_info_port_mapping }}"
-        host_mapping:   "{{ docker_info_port_mapping.by_proto | obj_map('obj_map', 'list_map', 'obj_attr', 'HostPort', 'int') }}"
+        host_mapping:   "{{ docker_info_port_mapping.by_proto | dict_map('dict_map', 'list_map', 'dict_attr', 'HostPort', 'int') }}"
       tmpfs:        
         configuration:  "{{ docker_info.HostConfig.Tmpfs | default({}) }}"
-        mountpoints:    "{{ (docker_info.HostConfig.Tmpfs | default({})) | obj_keys | list }}"
+        mountpoints:    "{{ (docker_info.HostConfig.Tmpfs | default({})) | dict_keys | list }}"
       volumes: 
         configuration:  "{{ docker_info.Config.Volumes | default([]) }}"
-        mountpoints:    "{{ (docker_info.Config.Volumes | default([])) | obj_keys | list }}"
+        mountpoints:    "{{ (docker_info.Config.Volumes | default([])) | dict_keys | list }}"
       healthcheck:
         enabled:        "{{ docker_info_healthcheck | length > 0 }}"
         test:           "{{ docker_info_healthcheck.Test | default([]) | map('quote') | join(' ') }}"
