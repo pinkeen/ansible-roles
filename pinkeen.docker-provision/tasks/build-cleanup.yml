@@ -1,0 +1,10 @@
+- name: Clean up the base image preparation leftovers
+  include_tasks:  stages/builder-image-cleanup.yml
+
+- name: Clean up the builder container leftovers
+  include_tasks:  stages/builder-container-cleanup.yml
+
+- name: Inform about step success
+  debug:
+    msg: |
+      *** [SUCCESS] Cleanup all build leftovers ***

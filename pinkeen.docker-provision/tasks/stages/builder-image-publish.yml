@@ -1,0 +1,13 @@
+- name: Push the newly built image
+  when: >-
+    docker_builder_image_prepare is changed 
+    and docker_builder_image_build 
+    and docker_builder_image_push
+  block:
+    - name: Tag the newly built image
+      docker_image:
+        state: present
+        name: "{{ docker_builder_image | default(omit, true) }}"
+        repository: "{{ docker_builder_image_repository | default(omit, true) }}"
+        docker_host: "{{ docker_builder_daemon_host }}"
+        push: yes

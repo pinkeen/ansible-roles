@@ -1,0 +1,8 @@
+### 
+# Save (and publish) the current container state:
+# - save the current container state as image
+# - tag and push that image (if enabled)
+#
+# This stage might be called multiple times to
+# produce multiple container variants.
+###

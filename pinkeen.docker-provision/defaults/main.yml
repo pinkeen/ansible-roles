@@ -1,0 +1,114 @@
+# *** General ***
+
+# Project name, used for naming things only
+docker_builder_project_name: ansible-provisioned
+
+# Job identifier used for resource naming - must be unique for parallel builds
+docker_builder_job_id: "{{ ansible_date_time.iso8601_basic_short }}"
+
+# Set to enforce specific docker build host
+docker_builder_daemon_host: ~
+
+# The host that can be used to access ports published by the containers (e.g. will be used for SSH access if enabled)
+docker_builder_daemon_network_host: "{{ docker_builder_daemon_host | ternary(docker_builder_daemon_host | urlsplit('hostname'), 'localhost') }}"
+
+
+# *** Base builder container image ***
+
+# Base image that the builder container is started from
+docker_builder_image: "{{ docker_builder_image_build_path | ternary(docker_builder_project_name, 'alpine:latest') }}"
+
+# Whether to build the image from sources
+docker_builder_image_build: yes
+
+# Path to docker build workdir - must be set `docker_builder_image_build` is enabled
+docker_builder_image_build_path: ~
+
+# Path to the dockerfile - relative to `docker_builder_image_build_path`
+docker_builder_image_build_dockerfile: "{{ docker_builder_image_build_path | ternary('Dockerfile', None) }}"
+
+# Whether to keep the container and intermedia layers as cache for further builds
+docker_builder_image_build_cache: yes
+
+# Force rebuild the image each time, only works if Dockerfile is specified
+docker_builder_image_build_force: yes
+
+# Docker args used to build the base image
+docker_builder_image_build_args: {}
+
+# Whether to push the base image after its rebuilt - push by default if new container was built
+docker_builder_image_build_publish: yes
+
+# Extra tags for the newly built image
+docker_builder_image_build_tags: 
+  - "build-{{ docker_builder_job_id }}"
+
+# List of tags to push when publishing the new base image - by default will use all tags this specific image is tagged with locally
+docker_builder_image_build_publish_tags: ~
+
+# Whether to try to pull / update the base image before each build
+docker_builder_image_pull: yes
+
+# Set to enforce specific docker repository to pull / push from
+docker_builder_image_repository: ~
+
+
+# *** Build container ***
+
+# Name of the builder container
+docker_builder_container_name: "{{ docker_builder_project_name }}-builder-{{ docker_builder_job_id }}"
+
+# Force fresh creation of the container if already present
+docker_builder_container_force_fresh: yes
+
+# Command to run the container with
+docker_builder_container_cmd: ~
+
+# Hostname
+docker_builder_container_hostname: "{{ docker_builder_container_name }}"
+
+# Auto remove container after build job is done
+docker_builder_container_auto_remove: yes
+
+# Enable support of SSH connection to the container
+docker_builder_container_ssh_support: no
+
+# Port the internal SSH server is listening on the container
+docker_builder_container_sshd_port: 22
+
+# Run as privileged
+docker_builder_container_privileged: no
+
+# Docker env to start container with
+docker_builder_container_env: {}
+
+# Extra ports to expose
+docker_builder_container_exposed_ports: []
+
+# List of extra ports to publish - if not set then all exposed ports are published
+docker_builder_container_published_ports: ~
+
+# List of tmpfs mounts 
+docker_builder_container_tmpfs_mounts: []
+
+# Force docker network
+docker_builder_container_network: ~
+
+# List of volumes to mount
+docker_builder_container_volumes: []
+
+# Keep volumes after container is removed
+docker_builder_container_volumes_keep: no
+
+# Label the container
+docker_builder_container_labels: {}
+
+# Name of the dynamically added ansible group containing builder containers
+docker_builder_container_ansible_groups: 
+  - docker-builder
+
+# *** Container provisioning ***
+
+# List of roles that will be used for p
+docker_builder_roles: []
+

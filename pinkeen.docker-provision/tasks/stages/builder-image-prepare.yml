@@ -1,0 +1,19 @@
+- name: Prepare builder image
+  docker_image:
+    state: "{{ docker_builder_image_build | ternary('build', 'present') }}"
+
+    name: "{{ docker_builder_image | default(omit, true) }}"
+    pull: "{{ docker_builder_image_pull }}"
+    push: no
+    
+    path: "{{ docker_builder_image_dockerpath | default(omit, true) }}"
+
+    dockerfile: "{{ docker_builder_image_dockerfile | default(omit, true) }}"
+    buildargs: "{{ docker_builder_image_build_args | default(omit, true) }}"
+
+    repository: "{{ docker_builder_image_repository | default(omit, true) }}"
+    docker_host: "{{ docker_builder_daemon_host }}"
+    
+    nocache: no
+    rm: no
+  register: docker_builder_image_prepare

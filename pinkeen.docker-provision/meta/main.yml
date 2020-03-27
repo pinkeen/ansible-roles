@@ -1,0 +1,24 @@
+dependencies: []
+
+galaxy_info:
+  author: Filip Sobalski <pinkeen@gmail.com>
+  description: Easily build docker images by provisioning them with Ansible
+  company: NimbleCo
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: MacOS
+      versions: 
+        - all
+    - name: Linux
+      versions: 
+        - all
+  galaxy_tags:
+    - docker
+    - provision
+    - provisioning
+    - container
+    - containers
+    - container_image
+dependencies:
+  - role: pinkeen.ansible-plugins

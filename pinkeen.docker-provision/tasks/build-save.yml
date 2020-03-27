@@ -1,0 +1,7 @@
+- name: Save the current builder state
+  include_tasks:  stages/builder-container-save.yml
+
+- name: Inform about step success
+  debug:
+    msg: |
+      *** [SUCCESS] Cleanup all build leftovers ***

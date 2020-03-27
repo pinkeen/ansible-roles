@@ -1,0 +1,19 @@
+- name: Prepare the base image for builder container
+  include_tasks:  stages/builder-image-prepare.yml
+  
+- name: Publish the base image for builder container
+  include_tasks:  stages/builder-image-publish.yml
+
+- name: Start the builder container
+  include_tasks:  stages/builder-container-initialize.yml
+
+- name: Setup the builder container for provisioning
+  include_tasks:  stages/builder-container-setup.yml
+
+- name: Clean up the base image preparation leftovers
+  include_tasks:  stages/builder-image-cleanup.yml
+
+- name: Inform about step success
+  debug:
+    msg: |
+      *** [SUCCESS] Builder Container Initialization ***

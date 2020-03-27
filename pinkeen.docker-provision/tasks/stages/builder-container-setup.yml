@@ -1,0 +1,21 @@
+### 
+# Set up the container for ansible for provisioning:
+#  - verify that the container is working properly
+#  - perform basic internal needed for later provisioning
+#  - add hosts and groups for docker connection and ssh access
+#  - save facts and delegate them to other hosts for later stages
+###
+
+- name: Save and delegate build job facts
+  set_fact:
+    docker_builder_job_id: "{{ docker_builder_job_id }}"
+    docker_builder_image_id: "{{ docker_builder_image_build_path | ternary(docker_builder_project_name, 'alpine:latest') }}"
+    docker_builder_project_name: "{{ docker_builder_project_name }}"
+    docker_builder_container_name: "{{ docker_builder_container_name }}"
+    docker_builder_container_ansible_group: "{{ docker_builder_container_ansible_group }}"
+  delegate_to: "{{ target_host }}"
+  delegate_facts: true
+  loop: "{{ (['localhost', inventory_hostname] + groups[docker_builder_container_ansible_group]) | unique }}"
+  loop_control:
+    loop_var: target_host
+  

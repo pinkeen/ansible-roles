@@ -1,0 +1,6 @@
+### 
+# Clean up any leftovers from the build stage:
+#  - Stop and remove the builder container
+#  - Remove any volumes
+#  - Remove any built images 
+###

@@ -1,0 +1,114 @@
+### 
+# Configure and start the container and wait until its ready:
+#  - prepare container configuration
+#  - start the container 
+###
+
+- name: Compute basic container configuration
+  set_fact:
+    docker_builder_container_job_env:
+      ANSIBLE_PROV_PROJECT: "{{ docker_builder_project_name }}"
+      ANSIBLE_PROV_JOB: "{{ docker_builder_job_id }}"
+
+    docker_builder_container_job_labels:
+      com.github.pinkeen.ansible-docker-provision.project: "{{ docker_builder_project_name }}"
+      com.github.pinkeen.ansible-docker-provision.job: "{{ docker_builder_job_id }}"
+      
+    docker_builder_container_job_exposed_ports: >-
+      {{ docker_builder_container_exposed_ports + docker_builder_container_auto_exposed_ports }}
+    docker_builder_container_job_published_ports: >-
+      {{
+        docker_builder_container_published_ports | ternary(
+          docker_builder_container_auto_exposed_ports | list
+            + docker_builder_container_published_ports | default([], true),
+          'all'
+        )
+      }}
+  vars:
+    docker_builder_container_auto_exposed_ports: >-
+      {{ docker_builder_container_ssh_support | ternary([docker_builder_container_sshd_port | string], []) }}
+
+- name: Create temporary build container
+  docker_container:
+    state: started
+
+    name: "{{ docker_builder_container_name }}"
+    hostname: "{{ docker_builder_container_hostname }}"
+    image: "{{ docker_builder_image }}"
+    command: "{{ docker_builder_container_cmd | default(omit, true) }}"
+
+    tty: yes
+    detach: yes
+    restart_policy: "no"
+
+    privileged: "{{ docker_builder_container_privileged }}"
+    recreate: "{{ docker_builder_container_force_fresh }}"
+    auto_remove: "{{ docker_builder_container_auto_remove }}"
+
+    env: "{{ docker_builder_container_job_env | combine(docker_builder_container_env) }}"
+
+    network_mode: "{{ docker_builder_container_network | default(omit, true) }}"
+    exposed_ports: "{{ docker_builder_container_job_exposed_ports }}"
+    published_ports: "{{ docker_builder_container_job_published_ports }}"
+
+    tmpfs: "{{ docker_builder_container_tmpfs_mounts }}"
+    volumes: "{{ docker_builder_container_volumes }}"
+    keep_volumes: "{{ docker_builder_container_volumes_keep }}"
+
+    labels: "{{ docker_builder_container_job_labels | combine(docker_builder_container_labels) }}"
+
+    docker_host: "{{ docker_builder_daemon_host }}"
+
+    output_logs: yes
+
+    log_driver: json-file
+    log_options: 
+      env-regex: '^ANSIBLE_PROV_'
+  register: docker_builder_container
+
+- name: Store container runtime info
+  vars:
+    docker_info:              "{{ docker_builder_container.container }}"
+    docker_info_healthcheck:  "{{ docker_builder_container.container.Config.Healthcheck | default({}) }}"
+    docker_info_port_mapping:
+        by_port:  "{{ docker_builder_container.container.NetworkSettings.Ports | default({}) }}"
+        by_proto: "{{ docker_builder_container.container.NetworkSettings.Ports | default({}) | docker_ports_proto_split }}"
+  set_fact:
+    docker_builder_container_info:
+      id:           "{{ docker_info.Id }}"
+      labels:       "{{ docker_info.Config.Labels | default({}) }}"
+      args:         "{{ docker_info.Config.Args | default([]) }}"
+      env:          "{{ docker_info.Config.Env | default([]) | docker_env_to_dict }}"
+      user:         "{{ docker_info.Config.User | default(none, true) }}"
+      cmd:          "{{ docker_info.Config.Cmd | default([]) | map('quote') | join(' ') }}"
+      entrypoint:   "{{ docker_info.Config.Entrypoint | default(none) }}"
+      workdir:      "{{ docker_info.Config.WorkingDir | default(none, true) }}"
+      mounts:       
+        configuration:  "{{ docker_info.Mounts | default({}) }}"
+        mountpoints:    "{{ docker_info.Mounts | default({}) | map(attribute='Destination') | list }}"
+        host_mapping:   "{{ docker_info.Mounts | default([]) | items2dict(key_name='Destination', value_name='Source') }}"
+      ports:        
+        configuration:  "{{ docker_info_port_mapping }}"
+        host_mapping:   "{{ docker_info_port_mapping.by_proto | obj_map('obj_map', 'list_map', 'obj_attr', 'HostPort', 'int') }}"
+      tmpfs:        
+        configuration:  "{{ docker_info.HostConfig.Tmpfs | default({}) }}"
+        mountpoints:    "{{ (docker_info.HostConfig.Tmpfs | default({})) | obj_keys | list }}"
+      volumes: 
+        configuration:  "{{ docker_info.Config.Volumes | default([]) }}"
+        mountpoints:    "{{ (docker_info.Config.Volumes | default([])) | obj_keys | list }}"
+      healthcheck:
+        enabled:        "{{ docker_info_healthcheck | length > 0 }}"
+        test:           "{{ docker_info_healthcheck.Test | default([]) | map('quote') | join(' ') }}"
+
+# ansible_ssh_host_key_checking
+# ansible_ssh_private_key_file
+
+- debug: var=docker_builder_container_info
+- name: Add the container to ansible host groups
+  add_host:
+    name: "{{ docker_builder_container_name }}"
+    groups: "{{ docker_builder_container_ansible_groups }}"
+    ansible_docker_host: "{{ docker_builder_daemon_host | default(omit, true) }}" 
+    ansible_connection: docker
+
+    

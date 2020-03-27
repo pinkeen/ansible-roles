@@ -1,10 +1,3 @@
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
-
-import configparser
-
-parser = configparser.ConfigParser()
-
 def decode_ini(
   data,
 
@@ -18,8 +11,8 @@ def decode_ini(
   value_none='',
 ): 
   while raw_line = next(iter(data.splitlines()), None) is not None:
+    pass
     
-
 
 def encode_ini(
   data, 

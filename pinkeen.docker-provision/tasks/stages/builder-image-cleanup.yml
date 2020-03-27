@@ -1,0 +1,7 @@
+### 
+# Clean up any leftovers from the image preparation:
+#  - Remove pulled image
+#  - Remove intermediary layers
+#  - Remove volumes
+#  - ...
+###
