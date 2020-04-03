@@ -1,4 +1,4 @@
-### 
+###
 # Set up the container for ansible for provisioning:
 #  - verify that the container is working properly
 #  - perform basic internal needed for later provisioning
@@ -15,7 +15,7 @@
     docker_builder_container_ansible_groups: "{{ docker_builder_container_ansible_groups }}"
   delegate_to: "{{ target_host }}"
   delegate_facts: true
-  loop: "{{ (['localhost', inventory_hostname] + groups[docker_builder_container_ansible_group]) | unique }}"
+  loop: "{{ (['localhost', inventory_hostname] + docker_builder_container_ansible_groups) | unique }}"
   loop_control:
     loop_var: target_host
-  
+
