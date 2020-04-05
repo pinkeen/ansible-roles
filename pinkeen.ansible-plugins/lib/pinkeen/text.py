@@ -143,7 +143,7 @@ def banner(
   frame_right=True, 
   frame_top=True, 
   frame_bottom=True, 
-  param_value_sep_char='.',
+  expander_char='.',
   ruler_char='-',
   align='center',
   trim_leading=False, 
@@ -151,12 +151,55 @@ def banner(
   width=None,
   width_max=DEFAULT_WIDTH
 ):
-  def line_extra_len():
-    return (0
-      + padding_left 
-      + padding_right 
-      + (1 if frame_left else 0)
-      + (1 if frame_right else 0)
+  def render_content(content_lines):
+    for line in content_lines:
+      if ruler_char is not None and re_ruler.match(line):
+        yield ''
+        yield ruler_char * content_width
+        yield ''
+        continue
+
+      if expander_char is not None and re_expander.search(line):
+        elements = re_expander.split(line)
+        elements_width = sum(map(len, elements))
+        expander_count = len(elements) - 1
+        expander_width = math.ceil((content_width - elements_width) / expander_count)
+        expander_width_fix = content_width - (elements_width + expander_width * expander_count)
+        expander_width_odd = expander_width + expander_width_fix
+
+        line = str.join(
+          expander_char * expander_width_odd,
+          [
+            elements[0],
+            str.join(expander_char * expander_width, elements[1:])
+          ]
+        );
+
+      yield line
+
+
+  def frame_line(line=''):
+    return str.join('', (
+      frame_char if frame_left else '',
+      ' ' * padding_left,
+      line + ' ' * (content_width - len(line)),
+      ' ' * padding_right,
+      frame_char if frame_right else '',
+    ))
+
+
+  def frame_bar():
+    return frame_char * width
+
+
+  if expander_char is not None:
+    re_expander = re.compile('\.{4,}')
+
+  if ruler_char is not None:
+    re_ruler = re.compile(''
+      + '^\s*'
+      + '(' + re.escape(ruler_char) + '){4,}'
+      + '\s*$'
     )
 
   text_lines = trimmed(
@@ -166,20 +209,29 @@ def banner(
     trailing=trim_trailing
   )
 
+  decorators_width = (
+    + padding_left 
+    + padding_right 
+    + (1 if frame_left else 0)
+    + (1 if frame_right else 0)
+  )
+
   if width is None:
     width = max(map(len, text_lines))
-    width_max -= line_extra_len()
+    width_max -= decorators_width
 
   if width > width_max:
     width = width_max
 
-  content_width = width - line_extra_len()
+  content_width = width - decorators_width
   
   text_lines = wrapped(
     text=text_lines,
     as_list=True,
     width=content_width
   )
+
+  text_lines = list(render_content(text_lines))
 
   text_lines = aligned(
     text=text_lines,
@@ -188,104 +240,23 @@ def banner(
     as_list=True
   )
 
-  if param_value_sep_char is not None:
-    # The first attempt:
-    #   (?P<name>([^.]+\.{0,2})+) 
-    #   \s\.{3,}\s
-    #   (?P<value>([^.]+\.{0,2})+)
-    # ...caused catasthropic backtracking 😅,
-    # so had to resort to lookaheads 🤷‍♂️.
-    re_param_value = re.compile(''
-      + '^(?P<name>[^.]+|[^\s].+)+\s+\.{3,}\s+(?P<value>.*)'
-    )
-
-    print(re_param_value.pattern)
-
-  if ruler_char is not None:
-    re_ruler = re.compile(''
-      + '^\s*'
-      + '(' + re.escape(ruler_char) + '){3,}'
-      + '\s*$'
-    )
-
-  def process_line(line=''):
-    if ruler_char is not None and re_ruler.match(line):
-      return ([]
-        + frame_line()
-        + frame_line(ruler_char * content_width)
-        + frame_line()
-      )
-
-    if param_value_sep_char is not None:
-      print("before match", line)
-      param_value_match = re_param_value.match(line)
-
-      if param_value_match:
-        print("matches", line)
-        param_name = param_value_match.group('name')
-        param_value = param_value_match.group('value')
-        sep_width = (
-          content_width 
-          - len(param_name) 
-          - len(param_value) 
-          - 2
-        )
-
-        line = '%s %s %s' % (
-          param_name,
-          param_value_sep_char * sep_width,
-          param_value,
-        )
-      else:
-        print("no match", line)
-    
-
-    return frame_line(line)
-
-
-  def frame_line(line=''):
-    return [str.join('', (
-      frame_char if frame_left else '',
-      ' ' * padding_left,
-      line + ' ' * (content_width - len(line)),
-      ' ' * padding_right,
-      frame_char if frame_right else '',
-    ))]
-
-  def horiz_frame():
-    return frame_char * width
-
   banner_lines = []
-  banner_lines += [horiz_frame()] if frame_top else []
-  banner_lines += [frame_line()] * padding_top
-  banner_lines += list(map(process_line, text_lines))
-  banner_lines += [frame_line()] * padding_top
-  banner_lines += [horiz_frame()] if frame_bottom else []
+  banner_lines += [frame_bar()] if frame_top else []
+  banner_lines += [frame_line('')] * padding_top
+  banner_lines += list(map(frame_line, text_lines))
+  banner_lines += [frame_line('')] * padding_top
+  banner_lines += [frame_bar()] if frame_bottom else []
 
-  return str.join('\n', flatten_line_lists(banner_lines))
+  return str.join('\n', banner_lines)
 
-# print(banner(width=45, align='center', text="ERROR!!!"))
-# print(banner(width=45, align='right', frame_top=False, text='To jest tytuł\n\nA to jest bardzo, ale to bardzo długa \n -----   \n linia dłuzsza nawet niz 80 znaków i tak dalej\n a to jest juz krotsza linia'))
+print(banner(width=45, align='center', text="ERROR!!!"))
+print(banner(width=45, align='right', frame_top=False, text='To jest tytuł\n\nA to jest bardzo, ale to bardzo długa \n -----   \n linia dłuzsza nawet niz 80 znaków i tak dalej\n a to jest juz krotsza linia'))
 
-import time
+print(banner(width=45, align='right', frame_top=False, text=' Cośtam .... 45'))
+print(banner(width=45, align='right', frame_top=False, text=' Cośtam .... 45 .... dłuszy .... elo'))
+print(banner(width=45, align='right', frame_top=False, text=' Cośtam .... 1 .... 2 .... 3 .... 42'))
+print(banner(width=45, align='right', frame_top=False, text=' .... 3 .... 42'))
+print(banner(width=45, align='right', frame_top=False, text='....42'))
+print(banner(width=45, align='right', frame_top=False, text='5.... '))
 
 
-def t(s):
-  start = time.time()
-  m = re.match('^(?P<name>.*(?!\.{3,}))\s+\.{3,}\s+(?P<value>.*(?!\.{3,}))$', s)
-  took = time.time() - start
-
-  if m:
-    print('[MATCH]', "[%.2fs]" % took, s, ' | ', m.group('name'), '=', m.group('value'))
-  else:
-    print('[NO]',"[%.2fs]" % took, s)
-
-t(' this...is.a complicated   param-name ...    and its value!  ')
-t('simple.param.name ... 34')
-t('spaced param  name ... 56')
-t('  spaced .. param . name ...... 56')
-t('  spaced.. name ... 56')
-t('  spaced.. name ...56')
-t('  spaced.. name ...56 ......elo')
-t('param ....... elo value ..... another one')
-t('                           To jest tytuł')
