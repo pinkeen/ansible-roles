@@ -15,7 +15,7 @@
       com.github.pinkeen.ansible-docker-provision.job: "{{ docker_builder_job_id }}"
       
     docker_builder_container_job_exposed_ports: >-
-      {{ docker_builder_container_exposed_ports + docker_builder_container_auto_exposed_ports }}
+      {{ docker_builder_container_exposed_ports + docker_builder_container_auto_exposed_ports | map('string') | unique | list }}
     docker_builder_container_job_published_ports: >-
       {{
         docker_builder_container_published_ports | ternary(
@@ -103,12 +103,29 @@
 # ansible_ssh_host_key_checking
 # ansible_ssh_private_key_file
 
-- debug: var=docker_builder_container_info
+# - name: >-
+#     Ensure container is ready
+#     {% if docker_builder_container_info.healthcheck.test | default(false, true) -%}
+#     (HEALTHCHECK {{ docker_builder_container_info.healthcheck.test }})
+#     {% endif %}
+#   docker_container_info:
+#     name: "{{ docker_builder_container_name }}"    
+#   register: docker_builder_container
+#   until: 
+#     docker_builder_container.container.State.Running | default(false) and
+#     (
+#       not docker_builder_container_info.healthcheck.enabled
+#       or docker_builder_container.container.State.Health.Status | default('unknown') == 'healthy'
+#     )
+#   failed_when: >-
+#     docker_builder_container is failed 
+#     or docker_builder_container.container.State.Health.Status | default('unknown') == 'unhealthy'
+#     or docker_builder_container.container.State.Dead | default(false)
+#   retries: 30
+#   delay: 1
+
 - name: Add the container to ansible host groups
   add_host:
     name: "{{ docker_builder_container_name }}"
     groups: "{{ docker_builder_container_ansible_groups }}"
-    ansible_docker_host: "{{ docker_builder_daemon_host | default(omit, true) }}" 
     ansible_connection: docker
-
-    

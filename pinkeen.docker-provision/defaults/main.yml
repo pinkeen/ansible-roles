@@ -107,6 +107,13 @@ docker_builder_container_labels: {}
 docker_builder_container_ansible_groups: 
   - docker-builder
 
+# Name of the resulting image to be commited after prov
+docker_builder_commit_image: "{{ docker_builder_container_name }}:build-{{ docker_builder_job_id }}"
+
+# Do we stop or just pause the image for commit - if the image has full
+# init / OS inside then stop is recommended
+docker_builder_commit_stop: yes
+
 # *** Container provisioning ***
 
 # List of roles that will be used for p

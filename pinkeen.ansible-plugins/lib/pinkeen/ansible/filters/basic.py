@@ -66,6 +66,50 @@ class DictFilterModule(AbstractFilterModule):
     def do_to_kv_list(obj={}):
         return [ {k: v} for k, v in obj.items() ]
 
+class StringFilterModule(AbstractFilterModule):
+    FILTER_NAME_PREFIX = 'str_'
+    FILTER_FUNC_PREFIX = 'do_'
+
+    '''
+    This is super useful for mapping a list of strings so they can
+    be prefixed, suffixed easily. The Jinja's format filter takes
+    the format string as the first argument thus is not suitable
+    to be used as map callback.
+    '''
+    @staticmethod
+    def do_format_with(input_str='', format_str='%s', *args):
+        return format_str % (str(input_str), *args,)
+
+    @staticmethod
+    def do_wrap_with(input_str='', prefix_str='', suffix_str=''):
+        return prefix_str . str(input_str) . suffix_str
+
+    @staticmethod
+    def do_prefix_with(input_str='', prefix_str=''):
+        return StringFilterModule.do_wrap_with(input_str, prefix_str=prefix_str)
+    
+    @staticmethod
+    def do_suffix_with(input_str='', suffix_str=''):
+        return StringFilterModule.do_wrap_with(input_str, suffix_str=suffix_str)
+
+def do_ruler(char='*', padding_char=' ', padding=0, margin=1, width=80):
+    padding_right_len = width - padding / 2
+    padding_left_len = width - padding_right_len
+    ruler_len = width - padding_left_len - padding_right_len
+
+    return "%s%s%s%s%s" % (
+        r'\n' * margin,
+        padding_char * padding_left_len,
+        char * ruler_len,
+        padding_char * padding_right_len,
+        r'\n' * margin,
+    )
+
+def do_banner(title='', frame_char='*', fill_char=' ', ruler_top=True, ruler_bottom=True, width=80):
+    title_length = len(title)
+
+
+
 
 class ListFilterModule(AbstractFilterModule):
     FILTER_NAME_PREFIX = 'list_'
