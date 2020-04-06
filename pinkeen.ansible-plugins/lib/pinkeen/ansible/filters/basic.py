@@ -92,24 +92,6 @@ class StringFilterModule(AbstractFilterModule):
     def do_suffix_with(input_str='', suffix_str=''):
         return StringFilterModule.do_wrap_with(input_str, suffix_str=suffix_str)
 
-def do_ruler(char='*', padding_char=' ', padding=0, margin=1, width=80):
-    padding_right_len = width - padding / 2
-    padding_left_len = width - padding_right_len
-    ruler_len = width - padding_left_len - padding_right_len
-
-    return "%s%s%s%s%s" % (
-        r'\n' * margin,
-        padding_char * padding_left_len,
-        char * ruler_len,
-        padding_char * padding_right_len,
-        r'\n' * margin,
-    )
-
-def do_banner(title='', frame_char='*', fill_char=' ', ruler_top=True, ruler_bottom=True, width=80):
-    title_length = len(title)
-
-
-
 
 class ListFilterModule(AbstractFilterModule):
     FILTER_NAME_PREFIX = 'list_'

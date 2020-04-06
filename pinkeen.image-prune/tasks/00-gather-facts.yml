@@ -1,0 +1,11 @@
+# This has to work with busy box too, so this is the minimal
+# set of needed and cross-compatible arguments!
+- name: Get initial root fs size
+  command: du -ksx /
+  register: image_prune_du_initial
+
+- name: Set runtime vars
+  set_fact:
+    image_prune_exclude_labels: "{{ image_prune_exclude_actions | map('trim') | map('lower') | list }}"
+
+

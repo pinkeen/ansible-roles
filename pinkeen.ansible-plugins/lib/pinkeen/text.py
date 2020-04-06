@@ -2,18 +2,11 @@ import math
 import textwrap
 import re
 
+
 DEFAULT_WIDTH=80
 
-def flatten_line_lists(lines):
-  flattened = []
-
-  for sublines in lines:
-    if isinstance(sublines, str):
-      flattened.append(sublines)
-    else:
-      flattened.extend(list(sublines))
-
-  return flattened
+def split_lines(text):
+  return text if isinstance(text, list) else text.splitlines(keepends=False)
 
 def ruler(
   char='-', 
@@ -60,25 +53,23 @@ def wrapped(
         drop_whitespace=False
       ))
 
+    def flatten_line_lists(lines):
+      flattened = []
+
+      for sublines in lines:
+        if isinstance(sublines, str):
+          flattened.append(sublines)
+        else:
+          flattened.extend(list(sublines))
+
+      return flattened
+
     width = width - 2 if indicate_breaks else width
 
-    text_lines = text if isinstance(text, list) else text.splitlines(keepends=False)
+    text_lines = split_lines(text)
     text_lines = flatten_line_lists(map(wrap_line, text_lines))
+
     return list(text_lines) if as_list else '\n'.join(text_lines)
-
-
-def wrap_markup(
-    text='', 
-    as_list=False, 
-    width=DEFAULT_WIDTH
-):
-    return wrapped(
-      text=text, 
-      as_list=as_list, 
-      indicate_breaks=True,
-      break_on_hyphens=False, 
-      width=width
-    )
 
 
 def trimmed(
@@ -87,20 +78,30 @@ def trimmed(
   leading=True,
   trailing=True
 ):
-  def strip_line(line):
-    if leading: line = line.lstrip()
-    if trailing: line = line.rstrip()
-    return line
+  text_lines = split_lines(text)
 
-  text_lines = text if isinstance(text, list) else text.splitlines(keepends=False)
-  text_lines = map(strip_line, text_lines)
+  content_lines = list(filter(lambda line: len(line.strip()), text_lines))
+
+  if leading:
+    leading_whitespace = min(map(lambda line: len(line) - len(line.lstrip()), content_lines))
+    text_lines = list(map(lambda line: line[leading_whitespace:], text_lines))
+
+  if trailing:
+    trailing_whitespace = min(map(lambda line: len(line) - len(line.rstrip()), content_lines))
+    text_lines = list(map(lambda line: line[-trailing_whitespace:], text_lines))
 
   return list(text_lines) if as_list else '\n'.join(text_lines)
 
+def stripped(
+  text='',
+  as_list=False,
+  leading=True,
+  trailing=True
+): pass
 
 def aligned(
   text='', 
-  align='center',
+  align='left',
   width=None,
   width_max=None,
   as_list=False
@@ -115,9 +116,16 @@ def aligned(
       return ' ' * math.ceil(pad_len / 2) + line
 
     return line
-    
 
-  text_lines = text if isinstance(text, list) else text.splitlines(keepends=False)
+  text_lines = split_lines(text)
+
+  if align == 'left':
+    leading_whitespace = min(map(lambda line: len(line) - len(line.lstrip()), text_lines))
+    text_lines = list(map(lambda line: line[leading_whitespace:], text_lines))
+
+  if align == 'right':
+    trailing_whitespace = min(map(lambda line: len(line) - len(line.rstrip()), text_lines))
+    text_lines = list(map(lambda line: line[-trailing_whitespace:], text_lines))
 
   if width is None:
     width = max(map(len, text_lines))
@@ -129,6 +137,41 @@ def aligned(
 
   return list(text_lines) if as_list else '\n'.join(text_lines)
 
+def justified(
+  text, 
+  separator_char=' ',
+  separator_pattern=None, 
+  as_list=False,
+  width=DEFAULT_WIDTH
+):
+  def justify_line(line):
+    if not re_separator.search(line):
+      return line
+
+    elements = re_separator.split(line)
+    elements_width = sum(map(len, elements))
+    separator_count = len(elements) - 1
+    separator_width = math.ceil((width - elements_width) / separator_count)
+    separator_width_fix = width - (elements_width + separator_width * separator_count)
+    separator_width_odd = separator_width + separator_width_fix
+
+    return str.join(
+      separator_char * separator_width_odd,
+      [
+        elements[0],
+        str.join(separator_char * separator_width, elements[1:])
+      ]
+    );
+  
+  if separator_pattern is None:
+    separator_pattern = '%s+' % re.escape(separator_char)
+
+  re_separator = re.compile(separator_pattern)
+
+  text_lines = split_lines(text)
+  text_lines = map(justify_line, text_lines)
+
+  return list(text_lines) if as_list else '\n'.join(text_lines)
 
 
 def banner(
@@ -145,7 +188,7 @@ def banner(
   frame_bottom=True, 
   expander_char='.',
   ruler_char='-',
-  align='center',
+  align='left',
   trim_leading=False, 
   trim_trailing=True,
   width=None,
@@ -159,21 +202,13 @@ def banner(
         yield ''
         continue
 
-      if expander_char is not None and re_expander.search(line):
-        elements = re_expander.split(line)
-        elements_width = sum(map(len, elements))
-        expander_count = len(elements) - 1
-        expander_width = math.ceil((content_width - elements_width) / expander_count)
-        expander_width_fix = content_width - (elements_width + expander_width * expander_count)
-        expander_width_odd = expander_width + expander_width_fix
-
-        line = str.join(
-          expander_char * expander_width_odd,
-          [
-            elements[0],
-            str.join(expander_char * expander_width, elements[1:])
-          ]
-        );
+      if expander_char:
+        line = justified(
+          text=line, 
+          separator_char=expander_char, 
+          separator_pattern='%s{4,}' % re.escape(expander_char),
+          width=content_width
+        )
 
       yield line
 
@@ -190,10 +225,6 @@ def banner(
 
   def frame_bar():
     return frame_char * width
-
-
-  if expander_char is not None:
-    re_expander = re.compile('\.{4,}')
 
   if ruler_char is not None:
     re_ruler = re.compile(''
@@ -249,14 +280,22 @@ def banner(
 
   return str.join('\n', banner_lines)
 
-print(banner(width=45, align='center', text="ERROR!!!"))
-print(banner(width=45, align='right', frame_top=False, text='To jest tytuł\n\nA to jest bardzo, ale to bardzo długa \n -----   \n linia dłuzsza nawet niz 80 znaków i tak dalej\n a to jest juz krotsza linia'))
-
-print(banner(width=45, align='right', frame_top=False, text=' Cośtam .... 45'))
-print(banner(width=45, align='right', frame_top=False, text=' Cośtam .... 45 .... dłuszy .... elo'))
-print(banner(width=45, align='right', frame_top=False, text=' Cośtam .... 1 .... 2 .... 3 .... 42'))
-print(banner(width=45, align='right', frame_top=False, text=' .... 3 .... 42'))
-print(banner(width=45, align='right', frame_top=False, text='....42'))
-print(banner(width=45, align='right', frame_top=False, text='5.... '))
 
 
+
+a = """
+    elo....ziomalu co tam elo
+    def flatten_line_lists(lines):
+      flattened = []
+
+      for sublines in lines:
+        if isinstance(sublines, str):
+          flattened.append(sublines)
+        else:
+          flattened.extend(list(sublines))
+
+      return flattened
+"""
+
+# print(banner(a, width=40))
+print(trimmed(a))

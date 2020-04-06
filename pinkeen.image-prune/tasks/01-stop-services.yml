@@ -1,0 +1,59 @@
+- name: Get system services
+  service_facts: ~
+
+- name: List running services
+  set_fact:
+    image_prune_stop_services_actions: []
+    image_prune_running_services: >-
+      {{
+        ansible_facts.services 
+          | dict2items
+          | map(attribute='value')
+          | selectattr('state', 'equalto', 'running')
+          | map(attribute='name')
+          | map('regex_replace', '\.service$', '')
+          | list
+      }}
+
+- name: Compute service stop actions to perform
+  set_fact:
+    image_prune_stop_services_actions: >-
+      {{
+        image_prune_stop_services_actions
+        + [
+            action | combine({
+              'service_names': service_names,
+              
+            })
+          ]
+      }}
+  loop: "{{ image_prune_stop_services }}"
+  loop_control:
+    loop_var: action
+    label: >-
+      {% if is_excluded %}[EXCLUDED] {% endif -%}
+      {% if service_names | length == 0 %}[NO-MATCHING-SERVICES] {% endif -%}
+      {{ action.label }}
+  vars:
+    is_excluded: >-
+      {{
+        (action.label | lower | trim) in image_prune_exclude_labels
+      }}
+    service_names: >-
+      {{
+        image_prune_running_services | select('match',
+          action.name_patterns | default([]) | join('|')
+        ) | list
+      }}
+  when: >-
+    not is_excluded 
+    and service_names | length > 0
+
+- name: Stop services that could interfere with pruning
+  service:
+    name: "{{ action.1 }}"
+    state: stopped
+  loop: "{{ image_prune_stop_services_actions | subelements('service_names') }}"
+  loop_control:
+    loop_var: action
+    label: "{{ action.0.label }} / {{ action.1 }}"

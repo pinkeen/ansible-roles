@@ -1,0 +1,20 @@
+- name: Prepare facts for pruning
+  include_tasks: 00-gather-facts.yml
+
+- name: Stop interfering services
+  include_tasks: 01-stop-services.yml
+
+- name: Remove unnecessary files
+  include_tasks: 02-remove-files.yml
+
+- name: Remove unneeded packages
+  include_tasks: 03-remove-packages.yml
+
+- name: Run prune commands
+  include_tasks: 04-run-commands.yml
+
+- name: Start selected services back
+  include_tasks: 04-run-commands.yml
+
+- name: Compute statistics and print summary
+  include_tasks: 99-summarize.yml

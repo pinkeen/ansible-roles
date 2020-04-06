@@ -1,0 +1,14 @@
+- name: Start services that were stopped prior to pruning
+  service:
+    name: "{{ action.1 }}"
+    state: stopped
+  loop: >-
+    {{ 
+        image_prune_stop_services_actions 
+          | rejectattr('restart', 'undefined')
+          | selectattr('restart') 
+          | subelements('service_names') 
+    }}
+  loop_control:
+    loop_var: action
+    label: "{{ action.0.label }} / {{ action.1 }}"

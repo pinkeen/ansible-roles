@@ -1,0 +1,116 @@
+# Services to stop prior to pruning.
+# Notes: 
+# - It's safe to list non-existent services the matches are performed
+#   against the list of all running or enabled services.
+# - By default services remain stopped - unless `restart` is enabled.
+#   Note that usually you don't want to start services which create
+#   caches on start. They will be started when user boots
+#   a container from the image, so usually you'll want
+#   all of them remain stopped until image is commited.
+# - The `name_patterns` setting accepts regexps that will be
+#   matched against base service name. Note thath in case 
+#   of systemd the `.service` suffix is stripped before
+#   matching, other unit types retain their full canonical name.
+image_prune_stop_services: 
+  - label: Stop Databases
+    name_patterns:
+      - 'mysql.*'
+      - 'mariadb.*'
+      - 'elasticsearch.*'
+      - 'redis.*'
+
+  - label: Stop Web Servers
+    name_patterns:
+      - 'httpd.*'
+      - 'nginx.*'
+      - 'apache.*'
+      - 'varnish.*'
+
+  - label: Stop App Servers
+    name_patterns:
+      - 'php-fpm.*'
+
+  - label: Stop Cron Daemon
+    restart: true
+    name_patterns:
+      - 'cron.*'
+
+# Files to be removed as a list of searches to be performed
+image_prune_remove_files:
+  - label: Remove System Logs
+    type: file
+    paths: 
+      - /var/log/
+    recurse: yes
+    name_patterns: 
+      - ".*\\.log(\\.(bz2|gz|xz))?"
+
+  - label: Remove MySQL Innodb Binary Logs
+    type: file
+    paths: 
+      - /var/lib/mysql/
+      - /var/lib/mysqld/
+      - /var/lib/mariadb/
+    recurse: no
+    name_patterns: 
+      - "ib.*"
+
+  - label: Remove Varnish Caches
+    type: directory
+    paths: 
+      - /var/lib/varnish/
+    recurse: no
+
+  - label: Remove Elasticsearch Data
+    type: any
+    paths: 
+      - /var/lib/elasticsearch/
+    recurse: no
+
+# System packages to remove
+image_prune_remove_packages:
+  - label: Remove Kernel Development Packages
+    packages:
+      - kernel-devel
+      - kernel-dev
+
+# Clean up commands to run, note that:
+# - Failure to execute a present command will be fatal.
+# - Commands are ran in order after file removal and
+#   before any services are started back.
+image_prune_run_commands:
+  - label: Clean Package Manager Cache
+    commands:
+      - support_test: which yum
+        command: yum -y clean all
+
+      - support_test: which dnf
+        command: dnf -y clean all
+
+      # If `/etc/apk/cache` is absent then cache is disabled
+      - support_test: which apk && ls /etc/apk/cache
+        command: apk cache clean --purge --quiet
+
+  - label: Clean systemd tmpfiles and recreate needed ones
+    commands:
+      - command: systemd-tmpfiles
+        args: --remove --clean --create
+
+# List of actions to not perform that is matched
+# against `label` settings in configured definitions.
+image_prune_exclude_actions: []
+
+# List of shells for filtering human users.
+# Note: If empty then computed automatically by either:
+#  - Listing `image_prune_user_shells_file` (if exists)
+#  - Reverse matching `image_prune_system_shells` (if shell list not available)
+image_prune_user_shells: ~
+
+# Path to file listing valid interactive shells.
+image_prune_user_shells_file: /etc/shells
+
+# Shells to filter out when listing human (non-interactive)
+# users if `/etc/shells` is not available.
+image_prune_system_shells:
+  - /sbin/nologin
+  - /sbin/shutdown

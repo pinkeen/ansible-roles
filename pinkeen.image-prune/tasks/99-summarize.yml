@@ -1,0 +1,24 @@
+- name: Get final root fs size
+  command: du -ksx /
+  register: image_prune_du_final
+
+- debug: var=image_prune_du_final
+
+- name: Compute statistics
+  set_fact:
+    image_prune_stats: 
+      size:
+        initial:    "{{ image_prune_size_initial }}"
+        final:      "{{ image_prune_size_final }}"
+        difference: "{{ image_prune_size_final | int - image_prune_size_initial | int }}"
+  vars:
+    image_prune_size_initial: "{{ (image_prune_du_initial.stdout.split() | first | int ) * 1000 }}"
+    image_prune_size_final: "{{ (image_prune_du_final.stdout.split() | first | int) * 1000 }}"
+
+- name: Print pruning summary 
+  debug:
+    msg: |
+      *** Finished System Pruning ***
+
+      Final rootfs size: {{ image_prune_stats.size.initial | int | human_readable }}
+      Saved by pruning: {{ image_prune_stats.size.difference | int | human_readable }}
