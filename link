@@ -1,0 +1,20 @@
+#!/bin/bash
+
+SRCDIR="$(dirname "$0")"
+DSTDIR="$1"
+PREFIX="${2:-pinkeen}"
+
+ROLES="$(find "$SRCDIR" -type d -depth 1)"
+
+echo -e "Roles found in '$SRCDIR': \n $ROLES\n"
+read -p "Link them to '$DSTDIR' with prefix '$PREFIX.' ? [Y\N] " YN
+
+
+if [[ "$YN" != "Y" ]] ; then
+    echo "Skipped"
+    exit 0
+fi
+
+for ROLE in $ROLES ; do
+    ln -snvf "$ROLE" "${DSTDIR%/}/$PREFIX.$(basename "$ROLE")"
+done
