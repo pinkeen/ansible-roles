@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROLE_DIR="roles/"
+ROLE_DIRS="$(find "${ROLE_DIR%/}" -type d -depth 1)"
+ROLE_REMOTE_REPO_URL_BASE="git@github.com:pinkeen"
+ROLE_REMOTE_REPO_NAME_PREFIX="ansible-role-"
+ROLE_REMOTE_REPO_BRANCH="master"
+
+git() {
+    local RC=0
+    echo " > git $@"
+    command git "$@" 2>&1 | sed 's/^/ < /g' || RC=$?
+
+    if (( $RC != 0 )) ; then
+        echo -e " < [FAILED] [$RC] git $@"
+    fi
+
+    echo
+    return $RC
+}
+
+echo $ROLE_DIRS
+
+for ROLE_PREFIX in $ROLE_DIRS ; do
+    ROLE_PREFIX="${ROLE_PREFIX%/}"
+    ROLE_NAME="$(basename "$ROLE_PREFIX")"
+    ROLE_BRANCH="subtree-$ROLE_NAME"
+    ROLE_REMOTE_NAME="subrepo-$ROLE_NAME"
+    ROLE_REMOTE_REPO_NAME="${ROLE_REMOTE_REPO_NAME_PREFIX}${ROLE_NAME}"
+    ROLE_REMOTE_REPO_URL="${ROLE_REMOTE_REPO_URL_BASE}/${ROLE_REMOTE_REPO_NAME}.git"
+
+    echo -e "\n --- Splitting role: $ROLE_NAME\n"
+    echo " -> Git Prefix: $ROLE_PREFIX"
+    echo " -> Git Branch: $ROLE_BRANCH"
+    echo " -> Git Remote: $ROLE_REMOTE_NAME"
+    echo " -> Git Remote URL: $ROLE_REMOTE_REPO_URL"
+    echo " -> Target Repository Name: $ROLE_REMOTE_REPO_NAME"
+
+    echo -e "\n --- Git tasks  \n"
+
+    git remote add "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_URL" \
+        || git remote set-url "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_URL"
+
+    git subtree split "--prefix=$ROLE_PREFIX" -b "$ROLE_BRANCH"
+
+    echo git push --set-upstream "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_BRANCH" --force
+    #git push --tags --set-upstream "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_BRANCH"
+
+    echo -e "\n --- \n"
+done
+
