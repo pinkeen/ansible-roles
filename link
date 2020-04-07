@@ -16,5 +16,5 @@ if [[ "$YN" != "Y" ]] ; then
 fi
 
 for ROLE in $ROLES ; do
-    ln -snvf "$ROLE" "${DSTDIR%/}/$PREFIX.$(basename "$ROLE")"
+    ln -snvf "$(realpath "$ROLE")" "${DSTDIR%/}/$PREFIX.$(basename "$ROLE")"
 done
