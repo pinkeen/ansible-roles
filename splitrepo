@@ -2,52 +2,53 @@
 
 set -euo pipefail
 
-ROLE_DIR="roles/"
-ROLE_DIRS="$(find "${ROLE_DIR%/}" -type d -depth 1)"
-ROLE_REMOTE_REPO_URL_BASE="git@github.com:pinkeen"
-ROLE_REMOTE_REPO_NAME_PREFIX="ansible-role-"
-ROLE_REMOTE_REPO_BRANCH="master"
+PROJ_PATH="roles/"
+PROJ_PREFIXES="$(find "${PROJ_PATH%/}" -type d -depth 1)"
+
+PROJ_REPO_NAME_PATTERN="ansible-role-"'${PROJ_NAME}'
+PROJ_REPO_URL_PATTERN="git@github.com:pinkeen/"'${PROJ_REPO_NAME}'".git"
+PROJ_REPO_BRANCH="master"
 
 git() {
-    local RC=0
-    echo " > git $@"
-    command git "$@" 2>&1 | sed 's/^/ < /g' || RC=$?
+    local RC=0; command git "$@" 1>cmdout.tmp 2>cmderr.tmp | sed 's/^/ < [OUT] /g' || RC=$?
 
-    if (( $RC != 0 )) ; then
-        echo -e " < [FAILED] [$RC] git $@"
+    if (( $RC == 0 )) ; then
+        echo " [OK] git $@"
+        sed 's/^/ <out> /g' cmdout.tmp
+    else
+        echo " [FAILED] [$RC] git $@"
+        sed 's/^/ <err> /g' cmderr.tmp
     fi
 
+    rm -f cmderr.tmp cmdout.tmp
     echo
     return $RC
 }
 
-echo $ROLE_DIRS
+echo $PROJ_PREFIXES
 
-for ROLE_PREFIX in $ROLE_DIRS ; do
-    ROLE_PREFIX="${ROLE_PREFIX%/}"
-    ROLE_NAME="$(basename "$ROLE_PREFIX")"
-    ROLE_BRANCH="subtree-$ROLE_NAME"
-    ROLE_REMOTE_NAME="subrepo-$ROLE_NAME"
-    ROLE_REMOTE_REPO_NAME="${ROLE_REMOTE_REPO_NAME_PREFIX}${ROLE_NAME}"
-    ROLE_REMOTE_REPO_URL="${ROLE_REMOTE_REPO_URL_BASE}/${ROLE_REMOTE_REPO_NAME}.git"
+for PROJ_PREFIX in $PROJ_PREFIXES ; do
+    PROJ_PREFIX="${PROJ_PREFIX%/}"
+    PROJ_NAME="$(basename "$PROJ_PREFIX")"
+    PROJ_BRANCH="subtree-$PROJ_NAME"
+    PROJ_REMOTE="subrepo-$PROJ_NAME"
+    PROJ_REPO_NAME="$(eval "echo $PROJ_REPO_NAME_PATTERN")"
+    PROJ_REPO_URL="$(eval "echo $PROJ_REPO_URL_PATTERN")"
 
-    echo -e "\n --- Splitting role: $ROLE_NAME\n"
-    echo " -> Git Prefix: $ROLE_PREFIX"
-    echo " -> Git Branch: $ROLE_BRANCH"
-    echo " -> Git Remote: $ROLE_REMOTE_NAME"
-    echo " -> Git Remote URL: $ROLE_REMOTE_REPO_URL"
-    echo " -> Target Repository Name: $ROLE_REMOTE_REPO_NAME"
+    echo -e "\n *** Splitting role: $PROJ_NAME ***\n"
+    echo " Git Prefix: $PROJ_PREFIX"
+    echo " Git Local Branch: $PROJ_BRANCH"
+    echo " Git Remote: $PROJ_REMOTE/$PROJ_BRANCH"
+    echo " Git Remote URL: $PROJ_REPO_URL"
+    echo " Remote Repository Name: $PROJ_REPO_NAME"
+    echo " Remote Repository Branch: $PROJ_REPO_BRANCH"
 
-    echo -e "\n --- Git tasks  \n"
+    git remote add "$PROJ_REMOTE" "$PROJ_REPO_URL" \
+        || git remote set-url "$PROJ_REMOTE" "$PROJ_REPO_URL"
 
-    git remote add "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_URL" \
-        || git remote set-url "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_URL"
+    git subtree split "--prefix=$PROJ_PREFIX" -b "$PROJ_BRANCH"
 
-    git subtree split "--prefix=$ROLE_PREFIX" -b "$ROLE_BRANCH"
-
-    echo git push --set-upstream "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_BRANCH" --force
-    #git push --tags --set-upstream "$ROLE_REMOTE_NAME" "$ROLE_REMOTE_REPO_BRANCH"
-
-    echo -e "\n --- \n"
+    git push --force --set-upstream "$PROJ_REMOTE" "$PROJ_REPO_BRANCH"
+    # git push --tags --set-upstream "$PROJ_REMOTE" "$PROJ_REPO_BRANCH"
 done
 
